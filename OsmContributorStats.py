@@ -6,7 +6,7 @@
 '''
 #========================================================================="
 # OsmContributorStats.py  Version 0.1
-# Pierre Beland, 09-2013
+# Pierre Beland, 10-2013
 # Source https://github.com/pierzen/osm-contributor-stats/blob/master/OsmContributorStats.py
 #========================================================================="
 
