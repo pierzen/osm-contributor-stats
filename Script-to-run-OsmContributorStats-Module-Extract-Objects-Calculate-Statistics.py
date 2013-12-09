@@ -3,9 +3,9 @@
 
 """
 #========================================================================="
-# OsmContributorStats
+# https://github.com/pierzen/osm-contributor-stats/blob/master/Script-to-run-OsmContributorStats-Module-Extract-Objects-Calculate-Statistics.py
 # Pierre Beland, 10-2013
-
+# Example running version 0.1 of OsmContributorStats
 # OSM Contribitors Histor Statistics, for a specific bbox zone and date range
 # STATISTIQUES Historiques, contributeurs OSM pour une zone bbox et paire de dates
 #========================================================================="
