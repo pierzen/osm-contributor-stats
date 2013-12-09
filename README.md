@@ -41,5 +41,6 @@ The parameters should be the same for both functions since the file names for re
 
 ## Dependancies
 
-OsmApi.py Author Etienne Chové, source http://wiki.openstreetmap.org/wiki/PythonOsmApi
-OsmContributorStats.py class module Author Pierre Béland. This is en enhancement of a first script written by Sebastien Pierrel. Source https://github.com/pierzen/osm-contributor-stats/OsmContributorStats.py
+* OsmApi.py Author Etienne Chové, source http://wiki.openstreetmap.org/wiki/PythonOsmApi
+* OsmContributorStats.py class module Author Pierre Béland Source https://github.com/pierzen/osm-contributor-stats/OsmContributorStats.py. The original script from Sebastien Pierrel (Seb's stats script v0.4 ) produced only statistics for objects created and did not include breakdown of POI's and ways.
+
