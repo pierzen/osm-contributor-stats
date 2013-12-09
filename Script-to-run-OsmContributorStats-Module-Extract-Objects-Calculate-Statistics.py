@@ -26,6 +26,13 @@ users=[None]*2
 users[0] = [""]
 users[1] = [""]
 
+"""
+Example with nicknames
+users=[None]*2
+users[0] = ["abc","def","gjol"]
+users[1] = ["zyx","avb Yul"]
+"""
+
 
 
 # Example - Lome, Togo
