@@ -5,10 +5,9 @@
 # -*- coding: cp1252 -*-
 '''
 #========================================================================="
-# OsmContributorStats.py
-# Version 0.1
+# OsmContributorStats.py  Version 0.1
 # Pierre Beland, 09-2013
-# See https://github.com/pierzen/osm-contributor-stats/README.md
+# Source https://github.com/pierzen/osm-contributor-stats/blob/master/OsmContributorStats.py
 #========================================================================="
 
 #__version__ = '0.1'
