@@ -28,7 +28,7 @@ users[1] = [""]
 
 
 
-Example - Lome, Togo
+# Example - Lome, Togo
 
 # Step 1 - Extract History Data  - Extraire les données historiques
 ContributorStats.API6_Collect_Changesets(team_from=0,team_to=0,from_date="2013-06-26",
