@@ -3,17 +3,18 @@
 
 ## How to use this Python class to produce contributor statistics
 
-The Script-to-run-OsmContributorStats-Module-Extract-Objects-Calculate-Statistics.py Python script contains instructions to extract objects and calculate statistics.
+The Script-to-run-OsmContributorStats-Module-Extract-Objects-Calculate-Statistics.py Python script is an example of instructions to extract objects and calculate statistics using the OsmContributorStats Class Module.
 
-## Dependancies 
+## Instructions
+
 You need to import and instantiate both OsmApi and OsmContributorStats. You should also indicate the directory where the Modules are stored and where the files produced will be stored.
 
-OsmApi is from Etienne Chové. See http://wiki.openstreetmap.org/wiki/PythonOsmApi
-OsmContributorStats class module from Pierre Béland, is en enhancement of a first script written by Sebastien Pierrel. From our experience in Haiti (60 trainees in six teams) and with the various French african projects we supported in the summer 2013, various flexibilities were added.
-* Differentiate Extract and Statistic functions. The Extract step may take some time. We should also be careful to avoid adding to much burden on the OSM API server. For these reasons, we thought that it would be better to differentiate Extract and Statistic phases.
+OsmContributorStats class module from Pierre Béland, is en enhancement of a first script written by Sebastien Pierrel. From our experience in 2013 in Haiti (60 trainees in six teams) and with various French african projects we supported, various flexibilities were added to the script.
+* Differentiate History extraction and Statistic steps as two funcions. The History extraction step may take some time. We should also be careful to avoid adding too much burden on the OSM API server. The possibility to first identify all contributors and later group them for analysis is an other aspect to take into account. For these reasons, we thought that it would be better to differentiate Extract and Statistic phases.
 * Add the possibility to have a various teams. This is useful to follow various classes or groups in the same bbox area.
 * when the user array is empty, Changesets for all contributors are extracted.
-* For the Statistic phase, it is possible to have a different User's array and then select a portion of the users. Also, Changesets that cover a bbox area 10 times larger then the bbox specified are excluded from the statistics. These are in general bots or Massive edits often covering continents.
+* For the Statistic phase, it is possible to have a different User's array and then select a portion of the users. 
+* Possibility to exclude some changesets from either Bots or Massive edits often covering continents. The solution we retained is to exclude Changesets that cover a bbox area 10 times larger then the bbox specified in the Function.
 
 
 ## Functions
@@ -29,13 +30,16 @@ See Examples in the script
 
 
 Parameters
- team_from and team_to : team to use in the users array
- from_date to to_date : pair of dates for extraction
-  min_lon, max_lon, min_lat, max_lat : these four parameters define the bbox zone to extract
-  prefix : prefix to use to name history files
- users : indicate the array of osm contributors to query. If no
-The file names will be composed using the prefix and the from and to dates.
+The parameters should be the same for both functions since the file names for read / write are composed using the prefix and the from and to dates.
 
-## Example
+* team_from and team_to : team to use in the users array
+* from_date to to_date : pair of dates for extraction
+* min_lon, max_lon, min_lat, max_lat : these four parameters define the bbox zone to extract
+* prefix : prefix to use to name history files
+* users : indicate the array of osm contributors to query. If no
 
-See Example-using-OsmContributorStats.py
+
+## Dependancies
+
+OsmApi.py Author Etienne Chové, source http://wiki.openstreetmap.org/wiki/PythonOsmApi
+OsmContributorStats.py class module Author Pierre Béland. This is en enhancement of a first script written by Sebastien Pierrel. Source https://github.com/pierzen/osm-contributor-stats/OsmContributorStats.py
