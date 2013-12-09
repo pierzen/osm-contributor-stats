@@ -3,7 +3,7 @@
 
 ## How to use this Python class to produce contributor statistics
 
-The Script-to-run-OsmContributorStats-Module-Extract-Objects-Calculate-Statistics.py Python script is an example of instructions to extract objects and calculate statistics using the OsmContributorStats Class Module.
+The ***Script-to-extract-Extract-Objects-Calculate-Statistics-from-OsmContributorStats-Module.py*** Python script is an example of instructions to extract objects and calculate statistics using the OsmContributorStats Class Module.
 
 ## Instructions
 
