@@ -11,7 +11,7 @@ You need to import and instantiate both OsmApi and OsmContributorStats. You shou
 
 OsmContributorStats class module from Pierre Béland, is en enhancement of a first script written by Sebastien Pierrel. From our experience in 2013 in Haiti (60 trainees in six teams) and with various French african projects we supported, various flexibilities were added to the script.
 * Differentiate History extraction and Statistic steps as two funcions. The History extraction step may take some time. We should also be careful to avoid adding too much burden on the OSM API server. The possibility to first identify all contributors and later group them for analysis is an other aspect to take into account. For these reasons, we thought that it would be better to differentiate Extract and Statistic phases.
-* Add the possibility to have a various teams. This is useful to follow various classes or groups in the same bbox area.
+* Add the possibility to compile statistics by teams. This is useful to follow various classes or groups in the same bbox area.
 * when the user array is empty, Changesets for all contributors are extracted.
 * For the Statistic phase, it is possible to have a different User's array and then select a portion of the users. 
 * Possibility to exclude some changesets from either Bots or Massive edits often covering continents. The solution we retained is to exclude Changesets that cover a bbox area 10 times larger then the bbox specified in the Function.
