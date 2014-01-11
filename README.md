@@ -16,27 +16,19 @@ OsmContributorStats class module from Pierre Béland, is en enhancement of a fir
 * For the Statistic phase, it is possible to have a different User's array and then select a portion of the users. 
 * Possibility to exclude some changesets from either Bots or Massive edits often covering continents. The solution we retained is to exclude Changesets that cover a bbox area 10 times larger then the bbox specified in the Function.
 
+## Statistics
 
-## Functions
+Statistics for each contributor and teams are compiled and saved in csv files.
 
-Two functions are called to extract objects and produce statistics. These are part of OsmContributorStats.py class.
+| Statistic type | variable names |
+| ------------------------- | ---------------------------------------- |
+| number of changesets | changeset |
+| objects created | node_c, way_c, relation_c |
+| objects modified | node_m, way_m, relation_m |
+| objects deleted | node_d, way_d, relation_d |
+| POI nodes | poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure |
+| ways| way_highway, way_waterway, way_building, way_man_made |
 
-1. API6_Collect_Changesets extracts history data and store locally in a specified directory. List of changesets and List of objects will be stored as Python objects.
-
-2. Changesets_Contributor_Statistics  produce the statistics from the local directory file.
-
-Array users is used to store the list of contributor osm nicknames by team
-See Examples in the script
-
-
-Parameters
-The parameters should be the same for both functions since the file names for read / write are composed using the prefix and the from and to dates.
-
-* team_from and team_to : team to use in the users array
-* from_date to to_date : pair of dates for extraction
-* min_lon, max_lon, min_lat, max_lat : these four parameters define the bbox zone to extract
-* prefix : prefix to use to name history files
-* users : indicate the array of osm contributors to query. If no
 
 
 ## Dependancies
