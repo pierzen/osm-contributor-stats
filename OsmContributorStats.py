@@ -339,7 +339,7 @@ class OsmContributorStats:
 				created_before=date_to)
 			if (self._debug) : print "** debug getChangesets ** nb_changesets=",len(changesets), ", nb_s_changesets=",len(s_changesets)
 			if iter==1 : changesets=s_changesets
-			else : self.appendChangesetsDict(changesets,s_changesets)
+			else : changesets=self.appendChangesetsDict(changesets,s_changesets)
 			if (self._debug) : print "** debug getChangesets ** nb_changesets=",len(changesets)
 			# protection boucles infinies
 			if iter>=5 :
@@ -402,7 +402,7 @@ class OsmContributorStats:
 			fini=0
 			iter=0
 			# protection boucles infinies
-			max_iter=40
+			max_iter=250
 			while (fini==0) :
 				iter+=1
 				if (self._debug): print "** debug ** time segments, iter=",iter,"\n",time_segments
@@ -420,7 +420,7 @@ class OsmContributorStats:
 				if(self._debug): print "\n>> iter ",iter, " nb s_changesets=",len(s_changesets)
 				if len(s_changesets)<100:
 					if iter==1 : changesets=s_changesets
-					else : self.appendChangesetsDict(changesets,s_changesets)
+					else : changesets=self.appendChangesetsDict(changesets,s_changesets)
 					if (self._debug) : print "=== + nb s_changesets=",len(s_changesets), " = nb changesets=",len(changesets), " ==="
 				# protection boucles infinies
 				if iter>=max_iter : break
