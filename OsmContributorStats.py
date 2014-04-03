@@ -19,16 +19,6 @@ from datetime import timedelta
 import gettext
 class OsmContributorStats:
 
-
-#__version__ = '0.1'
-
-import ast, csv, os, json, math
-from pprint import pprint
-from datetime import datetime
-from datetime import timedelta
-import gettext
-class OsmContributorStats:
-
 	def __init__(self, rep=None, lang="en", debug = False):
 		self.rep=rep
 		# debug
@@ -626,7 +616,7 @@ class OsmContributorStats:
 		if len(username)>0 :
 			changesets = self.getChangesets(username,min_lon, min_lat, max_lon, max_lat,
 				str(t_from_date)[0:10]+"T00:00:00Z",
-				str(t_from_date)[0:10]+"T11:59:59Z")
+				str(t_from_date)[0:10]+"T23:59:59Z")
 		else:
 			changesets = self.getChangesets(username,min_lon, min_lat, max_lon, max_lat,
 				str(t_from_date)[0:10]+"T00:00:00Z",
@@ -654,7 +644,7 @@ class OsmContributorStats:
 			if (self._debug) : print "** debug daily_statistics ** nb_changesets=",len(changesets)
 			changesets1 = self.getChangesets(username,min_lon, min_lat, max_lon, max_lat,
 				str(t_from_date)[0:10]+"T20:00:00Z",
-				str(t_from_date)[0:10]+"T11:59:59Z")
+				str(t_from_date)[0:10]+"T23:59:59Z")
 			changesets=self.appendChangesetsDict(changesets,changesets1)
 		# if (self._debug) : print changesets
 		if (self._debug) : print "** debug daily_statistics ** nb_changesets=", len(changesets)
@@ -796,7 +786,7 @@ class OsmContributorStats:
 		os.chdir(self.rep)
 		#
 		time_from="T00:00:00Z"
-		time_to="T11:59:59Z"
+		time_to="T23:59:59Z"
 		nom_changeset_list=prefix+from_date+"-"+to_date+"_changeset_hist_list.txt"
 		nom_changeset_objects=prefix+from_date+"-"+to_date+"_changeset_hist_objects.txt"
 		#nom_changeset_objects_json=prefix+from_date+"-"+to_date+"_changeset_hist_objects.json"
