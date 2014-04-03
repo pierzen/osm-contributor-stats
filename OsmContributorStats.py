@@ -2,13 +2,23 @@
 
 '''
 #!/usr/bin/python
-# -*- coding: cp1252 -*-
 '''
 #========================================================================="
-# OsmContributorStats.py  Version 0.1
-# Pierre Beland, 10-2013
-# Source https://github.com/pierzen/osm-contributor-stats/blob/master/OsmContributorStats.py
+# OsmContributorStats.py
+# Version 0.2
+# Pierre Beland, 09-2013
+# See https://github.com/pierzen/osm-contributor-stats/README.md
 #========================================================================="
+
+#__version__ = '0.2'
+
+import ast, csv, os, json, math
+from pprint import pprint
+from datetime import datetime
+from datetime import timedelta
+import gettext
+class OsmContributorStats:
+
 
 #__version__ = '0.1'
 
@@ -122,11 +132,26 @@ class OsmContributorStats:
 		#print "dist=",dist, "dist_lat=",dist_lat, "dist_lon=",dist_lon, "surface=",surface
 		return dims
 
+	def open_file(filename,filemode) :
+		try:
+			fp = open(filename,filemode)
+		except IOError as e:
+			if e.errno == errno.EACCES:
+				return
+			# Not a permission error.
+			raise
+		else:
+			return fp
+		return
+
 	def Changesets_to_Exclude(self,nom_changeset_list,min_lon,max_lon,min_lat,max_lat,csv_dim) :
 		os.chdir(self.rep)
-		#if self._debug: print "nom_changeset_list=" + str(nom_changeset_list)
+		if self._debug: print "debug: rep=" + os.getcwd()
+		if self._debug: print "debug: nom_changeset_list=" + str(nom_changeset_list)
+		if self._debug: print os.listdir(self.rep)
 		#nom_changeset_list=prefix+from_date+"-"+to_date+"_changeset_hist_list.txt"
 		fi_changesets_list = open(nom_changeset_list, 'r')
+		#fi_changesets_list = open_file(nom_changeset_list, 'r')
 		if ((min_lon-max_lon)<0.0001) and ((max_lat-min_lat)<0.0001):
 			dims_bbox={"dist":1.0, "dist_lat":1.0,"dist_lon":1.0,"surface":1}
 		else: dims_bbox=self.calc_dims_bbox(min_lat,min_lon,max_lat,max_lon)
@@ -137,6 +162,7 @@ class OsmContributorStats:
 		nb=0
 		exclusion=[]
 		exclusion.append(9)
+		# changesets_list from fi_changests_list
 		for read_list in fi_changesets_list.readlines():
 			changesets_list=ast.literal_eval(read_list)
 			# one line contains many changeset lists
@@ -196,12 +222,12 @@ class OsmContributorStats:
 
 
 	def stats_init(self, ):
-		zero={"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0,"poi_total_nodes": 0, "way_highway":0, "way_waterway":0, "way_building":0, "way_man_made":0}
+		zero={"changeset":0, "objects":0, "node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0,"poi_total_nodes": 0, "way_highway":0, "way_waterway":0, "way_building":0, "way_landuse":0, "way_man_made":0}
 		return zero
 
-	def stats_sum_changeset(self, changeset,stats):
+	def stats_sum_changeset(self, changeset,stats,uid):
 		#uid=str(changeset["data"]["uid"])
-		uid=changeset["data"]["uid"]
+		#uid=changeset["data"]["uid"]
 		#if (self._debug): print "uid, stats=",uid, stats[uid]
 		#objet , changeset a calculer avec fichier liste
 		#stats[uid]["stat"]["changeset"] += 1
@@ -253,6 +279,9 @@ class OsmContributorStats:
 					elif ("building" in changeset["data"]["tag"]) :
 						stats[uid]["stat"]["way_building"] += 1
 						#print "building +1"
+					elif ("landuse" in changeset["data"]["tag"]) :
+						stats[uid]["stat"]["way_landuse"] += 1
+						#print "landuse +1"
 					elif ("man_made" in changeset["data"]["tag"]) :
 						stats[uid]["stat"]["way_man_made"] += 1
 						#print "man_made +1"
@@ -276,8 +305,9 @@ class OsmContributorStats:
 				stats[uid]["stat"]["relation_d"] += 1
 		else:
 			print "ERROR"
+		stats[uid]["stat"]["objects"]=stats[uid]["stat"]["node_c"]+stats[uid]["stat"]["node_m"]+stats[uid]["stat"]["node_d"]+stats[uid]["stat"]["way_c"]+stats[uid]["stat"]["way_m"]+stats[uid]["stat"]["way_d"]+stats[uid]["stat"]["relation_c"]+stats[uid]["stat"]["relation_m"]+stats[uid]["stat"]["relation_d"]
 		stats[uid]["stat"]["poi_total_nodes"]= stats[uid]["stat"]["node_amenity"] + stats[uid]["stat"]["node_shop"]+ stats[uid]["stat"]["node_craft"] + stats[uid]["stat"]["node_office"]+ stats[uid]["stat"]["node_power"] + stats[uid]["stat"]["node_place"]+ stats[uid]["stat"]["node_man_made"] + stats[uid]["stat"]["node_history"]+ stats[uid]["stat"]["node_tourism"] + stats[uid]["stat"]["node_leisure"]
-		#print uid,stats[uid]
+		#if (self._debug) : print "total objects ",str(uid),str(stats[uid]["stat"]["objects"])
 		return stats
 
 	def max_datetime(self, changesets):
@@ -316,12 +346,18 @@ class OsmContributorStats:
 
 	def appendChangesetsDict(self, changesets1,changesets2):
 		# NOTE : changesets are updated by id. This avoids duplicates in case a changeset is open before and closed after the new start time.
-		if len(changesets1)>0 and len(changesets2)>0:
+		nb1=len(changesets1)
+		nb2=len(changesets2)
+		if (self._debug) :
+			print "debug appendChangesetsDict ", nb1, nb2
+		if nb1>0 and nb2>0 :
 			for id in changesets2 :
 				changesets1[id]=changesets2[id]
 			#print "nb changesets1 + changesets2=",len(changesets2)
 		else:
-			if len(changesets2)>0 : changesets1=changesets2
+			if nb2 : changesets1=changesets2
+		if (self._debug) :
+			print "debug appendChangesetsDict changesets1 ", len(changesets1)
 		return changesets1
 
 	def getChangesets_max_min(self, username,min_lon, min_lat, max_lon, max_lat,
@@ -337,7 +373,7 @@ class OsmContributorStats:
 			s_changesets = osmApi.ChangesetsGet(min_lon, min_lat, max_lon, max_lat,
 				username=username, closed_after=date_from,
 				created_before=date_to)
-			if (self._debug) : print "** debug getChangesets ** nb_changesets=",len(changesets), ", nb_s_changesets=",len(s_changesets)
+			if (self._debug) : print "** debug getChangesets_max_min ** nb_changesets=",len(changesets), ", nb_s_changesets=",len(s_changesets)
 			if iter==1 : changesets=s_changesets
 			else : changesets=self.appendChangesetsDict(changesets,s_changesets)
 			if (self._debug) : print "** debug getChangesets ** nb_changesets=",len(changesets)
@@ -369,16 +405,24 @@ class OsmContributorStats:
 		# Time Segments command stack to extract changesets. Push segments and pop-up one by one. When 100 extracts returned, the specific Time segment is split in two segments and they are pushed to the stack.
 		str_to_date=str(date_to)[0:10]+"Z00:00:00T"
 		dt = datetime.strptime(str_to_date, "%Y-%m-%dZ%H:%M:%ST")
+		#global changesets
 		changesets=[]
 		#1st step : 24h
 		s_changesets=[]
-		s_changesets = osmApi.ChangesetsGet(min_lon, min_lat, max_lon, max_lat,
+		#if (username.lstrip()==" "): username=""
+		if(self._debug) : print "\n", dt, " >> ChangesetsGet(username=(",username, "), date_from=", date_from, ", date_to=", date_to
+		if (username.lstrip()==" "):
+			s_changesets = osmApi.ChangesetsGet(min_lon, min_lat, max_lon, max_lat,
+			closed_after=date_from,
+			created_before=date_to)
+		else :
+			s_changesets = osmApi.ChangesetsGet(min_lon, min_lat, max_lon, max_lat,
 			username=username, closed_after=date_from,
 			created_before=date_to)
-		if(self._debug): print "\n>> iter=0  nb s_changesets=",len(s_changesets)
+		if(self._debug): print "\n", dt, " >> iter=0  nb s_changesets=",len(s_changesets)
 		if len(s_changesets)<100:
 			changesets=s_changesets
-			if (self._debug) : print "=== + nb s_changesets=",len(s_changesets), " = nb changesets=",len(changesets), " ==="
+			if (self._debug) : print dt, " === + nb s_changesets=",len(s_changesets), " = nb changesets=",len(changesets), " ==="
 			# extract completed for the day
 		else:
 			# 2nd step : if more then 100 changesets for step1, then time slices to collect changesets
@@ -402,7 +446,7 @@ class OsmContributorStats:
 			fini=0
 			iter=0
 			# protection boucles infinies
-			max_iter=250
+			max_iter=200
 			while (fini==0) :
 				iter+=1
 				if (self._debug): print "** debug ** time segments, iter=",iter,"\n",time_segments
@@ -417,13 +461,15 @@ class OsmContributorStats:
 				s_changesets = osmApi.ChangesetsGet(min_lon, min_lat, max_lon, max_lat,
 					username=username, closed_after=date_from,
 					created_before=date_to)
-				if(self._debug): print "\n>> iter ",iter, " nb s_changesets=",len(s_changesets)
+				if(self._debug): print "\n", dt, " >> iter ",iter, " nb s_changesets=",len(s_changesets)
 				if len(s_changesets)<100:
 					if iter==1 : changesets=s_changesets
 					else : changesets=self.appendChangesetsDict(changesets,s_changesets)
 					if (self._debug) : print "=== + nb s_changesets=",len(s_changesets), " = nb changesets=",len(changesets), " ==="
 				# protection boucles infinies
-				if iter>=max_iter : break
+				if iter>=max_iter :
+					print "\n Daily procedure interrupted, maximum iteration is ", max_iter, "\n"
+					break
 				if len(time_segments)==0 :
 					fini=1
 					if(self._debug): print ">> TOTAL nb changesets=",len(changesets)
@@ -459,7 +505,7 @@ class OsmContributorStats:
 
 	def getChangesetStats(self, cid):
 		from __main__ import osmApi
-		stat= {"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_man_made":0}
+		stat= {"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_landuse":0, "way_man_made":0}
 		for changesetData in osmApi.ChangesetDownload(cid):
 			#print "\n== changesetData =="
 			#print changesetData
@@ -512,6 +558,9 @@ class OsmContributorStats:
 						elif ("building" in changesetData["data"]["tag"]) :
 							stat["way_building"] += 1
 							#print "building +1"
+						elif ("landuse" in changesetData["data"]["tag"]) :
+							stat["way_landuse"] += 1
+							#print "landuse +1"
 						elif ("man_made" in changesetData["data"]["tag"]) :
 							stat["way_man_made"] += 1
 							#print "man_made +1"
@@ -552,6 +601,8 @@ class OsmContributorStats:
 		date_to=str(t_from_date)[0:10]+"T23:59:59Z"
 		if (self._debug) : print str(date_from)
 		if (self._debug) : print str(date_to)
+		if (username==" "):username=""
+		if (self._debug) : print "username=(",username,")"
 		changesets = self.getChangesets(username,min_lon, min_lat, max_lon,
 			max_lat, date_from, date_to)
 		nb_daily_changesets=len(changesets)
@@ -566,7 +617,7 @@ class OsmContributorStats:
 		return changesets, stats, stats_team, nb_daily_changesets
 
 	def daily_statistics(self, username,min_lon, min_lat, max_lon,max_lat,single_date,
-		t_from_date,t_to_date,csv,csv_team,csv_dim,ekip,stats,stats_team) :
+		t_from_date,t_to_date,csv,csv_team,csv_changeset,csv_dim,ekip,stats,stats_team) :
 		if (self._debug) : print "daily statistics, single_date="+str(single_date)[0:10]
 		date_from=str(t_from_date)[0:10]+"T00:00:00Z"
 		date_to=str(t_from_date)[0:10]+"T23:59:59Z"
@@ -575,7 +626,7 @@ class OsmContributorStats:
 		if len(username)>0 :
 			changesets = self.getChangesets(username,min_lon, min_lat, max_lon, max_lat,
 				str(t_from_date)[0:10]+"T00:00:00Z",
-				str(t_from_date)[0:10]+"T23:59:59Z")
+				str(t_from_date)[0:10]+"T11:59:59Z")
 		else:
 			changesets = self.getChangesets(username,min_lon, min_lat, max_lon, max_lat,
 				str(t_from_date)[0:10]+"T00:00:00Z",
@@ -603,7 +654,7 @@ class OsmContributorStats:
 			if (self._debug) : print "** debug daily_statistics ** nb_changesets=",len(changesets)
 			changesets1 = self.getChangesets(username,min_lon, min_lat, max_lon, max_lat,
 				str(t_from_date)[0:10]+"T20:00:00Z",
-				str(t_from_date)[0:10]+"T23:59:59Z")
+				str(t_from_date)[0:10]+"T11:59:59Z")
 			changesets=self.appendChangesetsDict(changesets,changesets1)
 		# if (self._debug) : print changesets
 		if (self._debug) : print "** debug daily_statistics ** nb_changesets=", len(changesets)
@@ -638,7 +689,10 @@ class OsmContributorStats:
 				stats["way_highway"] += csstat["way_highway"]
 				stats["way_waterway"] += csstat["way_waterway"]
 				stats["way_building"] += csstat["way_building"]
+				stats["way_landuse"] += csstat["way_landuse"]
 				stats["way_man_made"] += csstat["way_man_made"]
+				# users
+				day=datetime.strptime(single_date,'%Y-%m-%d')
 		#	stats = self.updateStat(stats, self.getChangesetStats(id))
 		#	print username + ", " + str(len(changesets)) + ", " + str(stats["node"]) + ", " + str(stats["way"]) + ", " + str(stats["relation"])
 		if (self._debug) : print str(ekip) +" *debug*, " +str(username) +", " + str(stats["changeset"]) + ", " + str(stats["node_c"]) + ", " + str(stats["way_c"]) + ", " + str(stats["relation_c"])+ ", " + str(stats["node_m"]) + ", " + str(stats["way_m"]) + ", " + str(stats["relation_m"])+ ", " + str(stats["node_d"]) + ", " + str(stats["way_d"]) + ", " + str(stats["relation_d"]) + ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_craft"]) + ", " + str(stats["node_office"]) + ", " + str(stats["node_power"]) + ", " + str(stats["node_place"])  + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"]) + ", " + str(stats["node_leisure"])
@@ -649,7 +703,7 @@ class OsmContributorStats:
 		stats= {"changeset":0}
 		nb_changesets=0
 		nb_daily_changesets=0
-		username=user
+		username=user.lstrip()
 		str_from_date=str(from_date)[0:10]+" 00:00:00"
 		str_to_date=str(to_date)[0:10]+" 00:00:00"
 		if (self._debug) : print str(str_from_date)
@@ -670,8 +724,8 @@ class OsmContributorStats:
 		return  stats, stats_team, nb_changesets
 
 	def summary_statistics(self, user,min_lon, min_lat, max_lon,
-		max_lat,from_date,to_date,csv,csv_team,csv_dim,ekip,stats_team) :
-		stats= {"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_man_made":0}
+		max_lat,from_date,to_date,csv,csv_team,csv_changeset,csv_dim,ekip,stats_team) :
+		stats= {"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_landuse":0, "way_man_made":0}
 		nb_changesets=0
 		nb_daily_changesets=0
 		username=user
@@ -687,7 +741,7 @@ class OsmContributorStats:
 		for single_date in self.daterange(t_from_date, t_to_date):
 			if (self._debug): print "loop single_date = "+ str(single_date)
 			self.daily_statistics(username,min_lon, min_lat, max_lon,
-				max_lat,single_date,single_date,single_date,csv,csv_team,csv_dim,ekip,stats,stats_team)
+				max_lat,single_date,single_date,single_date,csv,csv_team,csv_changeset,csv_dim,ekip,stats,stats_team)
 		stats_team["changeset"] += stats["changeset"]
 		stats_team["node_c"] += stats["node_c"]
 		stats_team["way_c"]  += stats["way_c"]
@@ -710,13 +764,16 @@ class OsmContributorStats:
 		stats_team["way_highway"] += stats["way_highway"]
 		stats_team["way_waterway"] += stats["way_waterway"]
 		stats_team["way_building"] += stats["way_building"]
+		stats_team["way_landuse"] += stats["way_landuse"]
 		stats_team["way_man_made"] += stats["way_man_made"]
 		# end adding each day to the statistics
 		#print'%-20s %6d' % (username,nb_changesets)
-		print str(ekip) +", " +str(user) +", " + str(stats["changeset"]) + ", " + str(stats["node_c"]) + ", " + str(stats["way_c"]) + ", " + str(stats["relation_c"])+ ", " + str(stats["node_m"]) + ", " + str(stats["way_m"]) + ", " + str(stats["relation_m"])+ ", " + str(stats["node_d"]) + ", " + str(stats["way_d"]) + ", " + str(stats["relation_d"]) + ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_office"]) + ", " + str(stats["node_power"]) + ", " + str(stats["node_place"]) + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"])+ ", " + str(stats["node_leisure"])+ ", " + str(stats["way_highway"])+ ", " + str(stats["way_waterway"])+ ", " + str(stats["way_building"])+ ", " + str(stats["way_man_made"])
-		#csv.write(str(ekip) +", " +str(user) +", " + str(stats["changeset"]) + ", " + str(stats["node_c"]) + ", " + str(stats["way_c"]) + ", " + str(stats["relation_c"])+ ", " + str(stats["node_m"]) + ", " + str(stats["way_m"]) + ", " + str(stats["relation_m"])+ ", " + str(stats["node_d"]) + ", " + str(stats["way_d"]) + ", " + str(stats["relation_d"]) + ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"])+ ", " + str(stats["node_leisure"])+ ", " + str(stats["way_highway"])+ ", " + str(stats["way_waterway"])+ ", " + str(stats["way_building"])+ ", " + str(stats["way_man_made"])  + "\n")
+
+		# teams
+		print str(ekip) +", " +str(user) +", " + str(stats["changeset"]) + ", " + str(stats["node_c"]) + ", " + str(stats["way_c"]) + ", " + str(stats["relation_c"])+ ", " + str(stats["node_m"]) + ", " + str(stats["way_m"]) + ", " + str(stats["relation_m"])+ ", " + str(stats["node_d"]) + ", " + str(stats["way_d"]) + ", " + str(stats["relation_d"]) + ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_office"]) + ", " + str(stats["node_power"]) + ", " + str(stats["node_place"]) + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"])+ ", " + str(stats["node_leisure"])+ ", " + str(stats["way_highway"])+ ", " + str(stats["way_waterway"])+ ", " + str(stats["way_building"])+ ", " + str(stats["way_landuse"])+ ", " + str(stats["way_man_made"])
+		#csv.write(str(ekip) +", " +str(user) +", " + str(stats["changeset"]) + ", " + str(stats["node_c"]) + ", " + str(stats["way_c"]) + ", " + str(stats["relation_c"])+ ", " + str(stats["node_m"]) + ", " + str(stats["way_m"]) + ", " + str(stats["relation_m"])+ ", " + str(stats["node_d"]) + ", " + str(stats["way_d"]) + ", " + str(stats["relation_d"]) + ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"])+ ", " + str(stats["node_leisure"])+ ", " + str(stats["way_highway"])+ ", " + str(stats["way_waterway"])+ ", " + str(stats["way_building"])+ ", " + str(stats["way_landuse"])+ ", " + str(stats["way_man_made"])  + "\n")
 		csv.write(str(ekip) +", " +str(user) +", " + str(stats["changeset"]) + ", " + str(stats["node_c"]) + ", " + str(stats["way_c"]) + ", " + str(stats["relation_c"])+ ", " + str(stats["node_m"]) + ", " + str(stats["way_m"]) + ", " + str(stats["relation_m"])+ ", " + str(stats["node_d"]) + ", " + str(stats["way_d"]) + ", " + str(stats["relation_d"])
-		+ ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_office"]) + ", " + str(stats["node_power"]) + ", " + str(stats["node_place"]) + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"])+ ", " + str(stats["node_leisure"])+ ", " + str(stats["way_highway"])+ ", " + str(stats["way_waterway"])+ ", " + str(stats["way_building"])+ ", " + str(stats["way_man_made"])  + "\n")
+		+ ", " + str(stats["node_amenity"]) + ", " + str(stats["node_shop"]) + ", " + str(stats["node_office"]) + ", " + str(stats["node_power"]) + ", " + str(stats["node_place"]) + ", " + str(stats["node_man_made"]) + ", " + str(stats["node_history"]) + ", " + str(stats["node_tourism"])+ ", " + str(stats["node_leisure"])+ ", " + str(stats["way_highway"])+ ", " + str(stats["way_waterway"])+ ", " + str(stats["way_building"])+ ", " + str(stats["way_landuse"])+ ", " + str(stats["way_man_made"])  + "\n")
 		csv.flush()
 		return  stats, stats_team, nb_changesets
 
@@ -739,7 +796,7 @@ class OsmContributorStats:
 		os.chdir(self.rep)
 		#
 		time_from="T00:00:00Z"
-		time_to="T23:59:59Z"
+		time_to="T11:59:59Z"
 		nom_changeset_list=prefix+from_date+"-"+to_date+"_changeset_hist_list.txt"
 		nom_changeset_objects=prefix+from_date+"-"+to_date+"_changeset_hist_objects.txt"
 		#nom_changeset_objects_json=prefix+from_date+"-"+to_date+"_changeset_hist_objects.json"
@@ -782,6 +839,7 @@ class OsmContributorStats:
 		#global changesets
 		global csv
 		global csv_team
+		global csv_changeset
 		global ekip
 		global fi_changesets_list
 		global fi_changesets_objects
@@ -809,16 +867,22 @@ class OsmContributorStats:
 		nom_changeset_objects_json=prefix+from_date+"-"+to_date+"_changeset_hist_objects.json"
 		nom_csv_dim=prefix+from_date+"-"+to_date+"_changeset_dim.csv"
 		nom_date=prefix+from_date+"-"+to_date
-		prefix=prefix+from_date+"-"+to_date+".csv"
-		prefix_team=prefix+"-team"+from_date+"-"+to_date+".csv"
+		prefix_users=prefix+from_date+"-"+to_date+".csv"
+		prefix_team=prefix+from_date+"-"+to_date+"-team.csv"
+		prefix_changesets=prefix+from_date+"-"+to_date+"-changeset.csv"
 		#
 		#	fi_changesets_list = open(nom_changeset_list, 'wb')
 		#	fi_changesets_objects = open(nom_changeset_objects, 'wb')
-		csv = open(prefix, 'wb')
+		csv = open(prefix_users, 'wb')
 		csv_team = open(prefix_team, 'wb')
+		csv_changeset = open(prefix_changesets, 'wb')
 		csv_dim = open(nom_csv_dim, 'wb')
-		csv_dim.write("user, id, exclu, min_lat, min_lon, max_lat, max_lon, surface_bbox, surface, ratio, comment, created_by \n")
+		csv_dim.write("user, id, exclu, min_lat, min_lon, max_lat, max_lon, surface_bbox, surface, ratio, comment, editor, created_by \n")
 		csv_dim.flush()
+		imp_col_changesets=  "day  \t hour \t ekip \t osmuser_uid \t osmuser_name \t changeset \t changeset_id \t editor \t created_by \t comment \t objects \t node_c \t way_c \t relation_c \t node_m \t way_m \t relation_m \t node_d \t way_d \t relation_d \t poi_total_nodes \t node_amenity \t node_shop \t node_office \t node_power \t node_place \t node_man_made \t node_history \t node_tourism \t node_leisure \t way_highway \t way_waterway \t way_building \t way_landuse \t way_man_made \t min_lon \t min_lat \t max_lon \t max_lat"
+		#print imp_col_changesets
+		csv_changeset.write(imp_col_changesets+"\n")
+		csv_changeset.flush()
 		#nom_fi_changesets_list="cap103-june-test-2013-05-27-2013-05-29_changeset_hist_list.txt"
 		#nom_changeset_detail="cap103-june-test-2013-05-27-2013-05-29_changeset_hist_objects.txt"
 		#json_data=open(nom_fi_changesets_objects)
@@ -836,10 +900,11 @@ class OsmContributorStats:
 		# 2. Calculate Statistics from  Changeset_objets - except changesets to exclude
 		fi_changesets_objects= open(nom_changeset_objects, 'r')
 
-		stat_zero= {"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_man_made":0}
+		stat_zero= {"changeset":0, "objects":0, "node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_landuse":0, "way_man_made":0}
 		# total par personne
 		nb=0
 		changesets=[]
+		stats_changeset={}
 		stats_user={}
 		stats_excluded_user={}
 		for read_data in fi_changesets_objects.readlines():
@@ -847,7 +912,7 @@ class OsmContributorStats:
 			changeset=ast.literal_eval(read_data)
 			changeset_id=changeset["data"]["changeset"]
 			uid=changeset["data"]["uid"]
-			if (self._debug and nb<4) : print "\nchangeset uid=",uid,"\n",changeset
+			if (self._debug and nb<3) : print "\nchangeset uid=",uid,"\n",changeset
 			user=str(changeset["data"]["user"].encode('utf-8'))
 			if "ekip" in changeset: ekip=str(changeset["ekip"])
 			else :
@@ -856,37 +921,59 @@ class OsmContributorStats:
 			if (changeset_id in exclusion) :
 				if not stats_excluded_user.has_key(uid):
 					stats_excluded_user[uid]={"ekip":ekip,"uid":uid, "user":user,"stat":self.stats_init()}
-				stats_excluded_user=self.stats_sum_changeset(changeset,stats_excluded_user)
+				stats_excluded_user=self.stats_sum_changeset(changeset,stats_excluded_user,uid)
 			else:
+				if not stats_changeset.has_key(changeset_id):
+					stats_changeset[changeset_id]={"ekip":ekip,"uid":uid, "user":user,"stat":self.stats_init()}
+				#print "** stats_changeset **"
+				#print stats_changeset
+				stats_changeset=self.stats_sum_changeset(changeset,stats_changeset,changeset_id)
 				if not stats_user.has_key(uid):
 					stats_user[uid]={"ekip":ekip,"uid":uid, "user":user,"stat":self.stats_init()}
-				stats_user=self.stats_sum_changeset(changeset,stats_user)
+				stats_user=self.stats_sum_changeset(changeset,stats_user,uid)
 		fi_changesets_objects.close()
 		if (self._debug): print "\nINPUT : NB Objects=",nb
 		nb=0
-		changesets_list=[]
+		tchangesets_list=[]
+		changesets_list={}
 		stats_user_list={}
 		#stats_excluded_user_list={}
 		fi_changesets_list= open(nom_changeset_list, 'r')
 		# nb changesets from changesets_list
 		for read_list in fi_changesets_list.readlines():
-			changesets_list=ast.literal_eval(read_list)
+			tchangesets_list=ast.literal_eval(read_list)
+			#print "nb list ", len(tchangesets_list), tchangesets_list
 			# one line contains many changeset lists
-			for obs in changesets_list:
+			for changeset_id in tchangesets_list:
 				nb+=1
+				if not changesets_list.has_key(changeset_id) :
+					#print "\nChangeset_id=", changeset_id
+					#print "tch ", tchangesets_list[changeset_id]
+					changesets_list[changeset_id]=tchangesets_list[changeset_id]
 				##changeset_json=json.dumps(read_data,sort_keys=True)
 				#print "\changeset_str\n", pprint(changeset_str), "\n-----------------------"
 				##changeset=json.loads(changeset_json)
 				###changeset=json.loads(read_data)
-				uid=changesets_list[obs]["uid"]
-				if (self._debug and nb<4) : print "\nfi_changesets_list uid=",uid,"\n",changesets_list[obs]
+				# csv changesets
+				#for changeset_id
+
+				# stats_changeset
+				if (self._debug and nb<3):
+					print "\n Changeset changeset_id=",str(changeset_id)
+					print changesets_list[changeset_id]
+
+				# csv users
+				uid=changesets_list[changeset_id]["uid"]
+				if (self._debug and nb<3) : print "\nfi_changesets_list uid=",uid,"\n",changesets_list[changeset_id]
 				#if self.is_numeric(uid):
-				#	uid=str(fi_changesets_list[obs]["uid"])
-				#else: uid=fi_changesets_list[obs]["uid"]
-				user=str(changesets_list[obs]["user"].encode('utf-8'))
+				#	uid=str(fi_changesets_list[changeset_id]["uid"])
+				#else: uid=fi_changesets_list[changeset_id]["uid"]
+				user=changesets_list[changeset_id]["user"]
+				if isinstance(user, unicode):
+					user = user.encode('utf-8')
 				if not stats_user_list.has_key(uid):
 					stats_user_list[uid]={"uid":uid, "user":user,"changeset":0,"changeset_excluded":0}
-				if (obs in exclusion) :
+				if (changeset_id in exclusion) :
 					stats_user_list[uid]["changeset_excluded"]+=1
 				else:
 					stats_user_list[uid]["changeset"]+=1
@@ -895,7 +982,7 @@ class OsmContributorStats:
 		#pprint (stats_user_list)
 		#print "\nTotal par usager"
 		print "-"*100
-		imp_col=  "ekip , uid_osmuser, user_name, changeset, node_c, way_c, relation_c, node_m, way_m, relation_m, node_d, way_d, relation_d, poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure, way_highway, way_waterway, way_building, way_man_made"
+		imp_col=  "ekip , osmuser_uid, osmuser_name, changeset, objects, node_c, way_c, relation_c, node_m, way_m, relation_m, node_d, way_d, relation_d, poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure, way_highway, way_waterway, way_building, way_landuse, way_man_made"
 		print imp_col
 		csv.write(imp_col+"\n")
 		csv.write(", ,"+nom_date+",,BBOX : ,"+str(min_lon)+","+ str(min_lat)+","+str(max_lon)+","+ str(max_lat)+"\n")
@@ -907,13 +994,105 @@ class OsmContributorStats:
 		#print "\nStats_user_list"
 		#for uid in stats_user_list:
 			#print uid, stats_user_list[uid]
+		# stats by changeset
+		nbc=0
+		for changeset_id in stats_changeset:
+			nbc+=1
+			changesets_l=changesets_list[changeset_id]
+			if (self._debug and nb<3) :
+				print "\n** changesets_list"
+				print changesets_list[changeset_id]
+				print "** stats_changeset"
+				print stats_changeset[changeset_id]
+			uid=stats_changeset[changeset_id]["uid"]
+			#print stats_changeset
+			# Lubeck L\xc3\xbcbeck probleme
+			# Carsten G\xc3\xbcse
+			user=str(stats_changeset[changeset_id]["user"])
+			#Probleme user= Lubeck
+			if uid==55462: user="Lubeck"
+			#if (uid==55462) : user="Lubeck"
+			#user=user.encode('utf-8')
+			if isinstance(user, unicode):
+				user = user.encode('utf-8')
+			import re
+			user= re.sub(r'[\xdf-\xfc]', ' ', user)
+			if "closed_at" in changesets_list[changeset_id] :
+				closed_at=changesets_list[changeset_id]["closed_at"]
+			else : closed_at="99"
+			if isinstance(closed_at, unicode):
+				closed_at = closed_at.encode('utf-8')
+			#import re
+			#closed_at = re.sub('[^0-9\:A-Z]+', '', closed_at)
+			#re:replace(closed_at, "[^A-Z0-9:]", "", [global, {return, list}])
+			#print "hour : "+str(closed_at)+" , " +str(closed_at)[9:]+" , " +str(closed_at)[9:11]
+			#print "hour : "+datetime.strftime(closed_at,'%Y-%m-%d %H:%M:%S')
+
+			day_closed_at=str(closed_at)[1:10]
+			hour_closed_at=str(closed_at)[11:13]
+			#print user, closed_at, ' ', day_closed_at, ' ', hour_closed_at
+			#print changesets_l["tag"]
+			if "comment" in changesets_l["tag"] :
+				comment=changesets_l["tag"]["comment"]
+				if isinstance(comment, unicode):
+					comment = comment.encode('utf-8')
+				#comment= re.sub(r'[\x00-\x1f\x80-\xff]', ' ', comment)
+			else:
+				comment=""
+				comment= comment.replace(r'\xc3\xa9', 'é')
+			# comment=="'Hausnummern Blauenstra\xc3\x9fe B\xc3\xbcchig'" :
+			if (uid==35468 and changeset_id==3645581) :
+				comment="House numbers Blauenstraaye Baychig"
+			if "created_by" in changesets_l["tag"] :
+				created_by=changesets_list[changeset_id]["tag"]["created_by"].encode('utf-8')
+				if isinstance(created_by, unicode):
+					created_by = created_by.encode('utf-8')
+				#created_by= re.sub(r'[\x00-\x1f\x80-\xff]', ' ', created_by)
+				tcreated_by=created_by.lower()
+				if  (tcreated_by.count("josm",0,4)>0) :
+					editor="1.JOSM"
+				elif (tcreated_by.count("potlatch",0,8)>0) :
+					editor="2.Potlatch"
+				elif (tcreated_by.count("merkaartor",0,10)>0) :
+					editor="3.Merkaartor"
+				elif (tcreated_by.count("id",0,2)>0) :
+					editor="4. ID"
+				else : editor="5. Other"
+			else:
+				created_by=""
+				editor="5. Other"
+
+			stats_c=stats_changeset[changeset_id]["stat"]
+			if (self._debug and nb<3) :
+				print stats_c
+				print changesets_l
+				#print str(changeset_id) + " hour_closed_at " + closed_at +",  " + hour_closed_at
+			users="1"
+# 3643421: {u'uid': 55462, u'open': False, u'min_lat': u'18.5179243', u'created_at': u'2010-01-17T17:21:59Z', u'max_lon': u'-71.9732673', u'tag': {u'comment': u'landuse and buildings', u'created_by': u'JOSM/1.5 (2864 de)'}, u'user': u'L\xfcbeck', u'max_lat': u'18.5233531', u'min_lon': u'-71.9839074', u'closed_at': u'2010-01-17T17:22:09Z', u'id': 3643421}
+			#print changeset_id
+			#print changesets_list[changeset_id]["created_at"].encode('utf-8')
+			#print changesets_list[changeset_id]["created_by"].encode('utf-8')
+			#print changesets_list[changeset_id]["comment"].encode('utf-8')
+			imp= day_closed_at +"	" + hour_closed_at +  "  \t" + str(ekip) +"\t" +str(uid) +"\t" + user +"\t" +str(users) + "\t" + str(changeset_id) + "\t"
+			imp+= editor  + "\t" + created_by + "   \t"
+			imp += comment + "   \t"
+			imp += str(stats_c["objects"]) + " \t" + str(stats_c["node_c"]) + " \t" + str(stats_c["way_c"]) + " \t" + str(stats_c["relation_c"])+ " \t" + str(stats_c["node_m"]) + " \t" + str(stats_c["way_m"]) + " \t" + str(stats_c["relation_m"])+ " \t" + str(stats_c["node_d"]) + " \t" + str(stats_c["way_d"]) + " \t" + str(stats_c["relation_d"]) + " \t"
+			imp += str(stats_c["poi_total_nodes"])
+			imp += " \t" + str(stats_c["node_amenity"])
+			imp += " \t" + str(stats_c["node_shop"]) + " \t" + str(stats_c["node_office"]) + " \t" + str(stats_c["node_power"]) + " \t" + str(stats_c["node_place"]) + " \t" + str(stats_c["node_man_made"]) + " \t" + str(stats_c["node_history"]) + " \t" + str(stats_c["node_tourism"])+ " \t" + str(stats_c["node_leisure"])+ " \t" + str(stats_c["way_highway"])+ " \t" + str(stats_c["way_waterway"])+ " \t" + str(stats_c["way_building"])+ " \t" + str(stats_c["way_landuse"])+ " \t" + str(stats_c["way_man_made"])+" \t"
+			imp += str(changesets_l["min_lon"].encode('utf-8')) + " \t" + str(changesets_l["min_lat"].encode('utf-8')) + " \t" + str(changesets_l["max_lon"].encode('utf-8')) + " \t" + str(changesets_l["max_lat"].encode('utf-8')) + "\n"
+			#print "**c** " + imp
+			csv_changeset.write(imp)
+			csv_changeset.flush()
+
+		# stats by user
 		for uid in stats_user:
-			nb+=1
-			#print uid
+			#nb+=1
+			if (self._debug):  print "\n\nDebug uid=", uid
 			#print stats_user[uid]
-			#print "\n\nDebug", uid, stats_user[uid]
+			# if (self._debug):  print "\n\nDebug uid=", uid, stats_user[uid]
 			stats_user[uid]["stat"]["changeset"]=stats_user_list[uid]["changeset"]
-			imp= stats_user[uid]["ekip"].rjust(3," ") +"," + str(uid).rjust(10," ") +", " + stats_user[uid]["user"].ljust(20," ") +"," + str(stats_user[uid]["stat"]["changeset"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["node_c"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["way_c"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["relation_c"]).rjust(5," ")+ ", " + str(stats_user[uid]["stat"]["node_m"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["way_m"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["relation_m"]).rjust(5," ")+ ", " + str(stats_user[uid]["stat"]["node_d"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["way_d"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["relation_d"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["poi_total_nodes"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_amenity"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_shop"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_office"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_power"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_place"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_man_made"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_history"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_tourism"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["node_leisure"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_highway"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_waterway"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_building"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_man_made"]).rjust(4," ")
+			imp= stats_user[uid]["ekip"].rjust(3," ") +"," + str(uid).rjust(10," ") +", " + stats_user[uid]["user"].ljust(20," ") +"," + str(stats_user[uid]["stat"]["changeset"]).rjust(5," ") +"," + str(stats_user[uid]["stat"]["objects"]).rjust(12," ") + ", " + str(stats_user[uid]["stat"]["node_c"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["way_c"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["relation_c"]).rjust(5," ")+ ", " + str(stats_user[uid]["stat"]["node_m"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["way_m"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["relation_m"]).rjust(5," ")+ ", " + str(stats_user[uid]["stat"]["node_d"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["way_d"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["relation_d"]).rjust(5," ") + ", " + str(stats_user[uid]["stat"]["poi_total_nodes"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_amenity"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_shop"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_office"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_power"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_place"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_man_made"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_history"]).rjust(4," ") + ", " + str(stats_user[uid]["stat"]["node_tourism"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["node_leisure"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_highway"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_waterway"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_building"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_landuse"]).rjust(4," ")+ ", " + str(stats_user[uid]["stat"]["way_man_made"]).rjust(4," ")
 			print imp
 			csv.write(imp+"\n")
 			csv.flush()
@@ -926,7 +1105,7 @@ class OsmContributorStats:
 			if not stats_ekip.has_key(ekip):
 				#stats_ekip[ekip]=self.stats_init()
 				stats_ekip[ekip]={"ekip":ekip,"stat":self.stats_init()}
-			#print user,ekip,stats_user[obs]
+			#print user,ekip,stats_user[changeset_id]
 			for key,value in stats_user[uid]["stat"].items():
 				#print ekip,key,value
 				#print stats_ekip
@@ -939,7 +1118,8 @@ class OsmContributorStats:
 		csv.flush()
 		#print "\nTotal par equipe\n-------------------------------------------"
 		for ekip in stats_ekip:
-			imp= str(ekip).rjust(3," ") + "," + " ".rjust(10," ") + ", " + "Equipe".ljust(20," ") + "," + str(stats_ekip[ekip]["stat"]["changeset"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["node_c"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["way_c"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["relation_c"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["node_m"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["way_m"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["relation_m"]).rjust(5," ")+ ", " + str(stats_ekip[ekip]["stat"]["node_d"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["way_d"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["relation_d"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["poi_total_nodes"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_amenity"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_shop"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_office"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_power"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_place"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_man_made"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_history"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_tourism"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["node_leisure"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_highway"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_waterway"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_building"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_man_made"]).rjust(4," ")
+			#print ekip,stats_ekip[ekip]["stat"]
+			imp= str(ekip).rjust(3," ") + "," + " ".rjust(10," ") + ", " + "Equipe".ljust(20," ") + "," + str(stats_ekip[ekip]["stat"]["changeset"]).rjust(5," ") +"," + str(stats_ekip[ekip]["stat"]["objects"]).rjust(12," ") + ", " + str(stats_ekip[ekip]["stat"]["node_c"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["way_c"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["relation_c"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["node_m"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["way_m"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["relation_m"]).rjust(5," ")+ ", " + str(stats_ekip[ekip]["stat"]["node_d"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["way_d"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["relation_d"]).rjust(5," ") + ", " + str(stats_ekip[ekip]["stat"]["poi_total_nodes"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_amenity"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_shop"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_office"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_power"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_place"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_man_made"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_history"]).rjust(4," ") + ", " + str(stats_ekip[ekip]["stat"]["node_tourism"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["node_leisure"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_highway"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_waterway"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_building"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_landuse"]).rjust(4," ")+ ", " + str(stats_ekip[ekip]["stat"]["way_man_made"]).rjust(4," ")
 			print imp
 			csv.write(imp+"\n")
 			csv.flush()
@@ -948,14 +1128,14 @@ class OsmContributorStats:
 		grand_total=self.stats_init()
 		#print "\n", grand_total
 		nbuser=0
-		for obs in stats_ekip:
+		for ekip in stats_ekip:
 			nbuser+=1
-			#print stats[obs]
-			#print nbuser,stats[obs]["ekip"],stats[obs]["uid"],stats[obs]["user"],stats[obs]["stat"]["changeset"]
-			for key,value in stats_ekip[obs]["stat"].items():
+			#print stats[ekip]
+			#print nbuser,stats[ekip]["ekip"],stats[ekip]["uid"],stats[ekip]["user"],stats[ekip]["stat"]["changeset"]
+			for key,value in stats_ekip[ekip]["stat"].items():
 				grand_total[key]+=value
 		#print "\nGrand Total\n",grand_total
-		imp= " ".rjust(3," ") +"," +" ".rjust(10," ") +", " +"GRAND TOTAL".ljust(20," ") +"," + str(grand_total["changeset"]).rjust(5," ") + ", " + str(grand_total["node_c"]).rjust(5," ") + ", " + str(grand_total["way_c"]).rjust(5," ") + ", " + str(grand_total["relation_c"]).rjust(5," ") + ", " + str(grand_total["node_m"]).rjust(5," ") + ", " + str(grand_total["way_m"]).rjust(5," ") + ", " + str(grand_total["relation_m"]).rjust(5," ") + ", " + str(grand_total["node_d"]).rjust(5," ") + ", " + str(grand_total["way_d"]).rjust(5," ") + ", " + str(grand_total["relation_d"]).rjust(5," ") + ", " + str(grand_total["poi_total_nodes"]).rjust(4," ") + ", " + str(grand_total["node_amenity"]).rjust(4," ") + ", " + str(grand_total["node_shop"]).rjust(4," ") + ", " + str(grand_total["node_office"]).rjust(4," ") + ", " + str(grand_total["node_power"]).rjust(4," ") + ", " + str(grand_total["node_place"]).rjust(4," ") + ", " + str(grand_total["node_man_made"]).rjust(4," ") + ", " + str(grand_total["node_history"]).rjust(4," ") + ", " + str(grand_total["node_tourism"]).rjust(4," ")+ ", " + str(grand_total["node_leisure"]).rjust(4," ")+ ", " + str(grand_total["way_highway"]).rjust(4," ")+ ", " + str(grand_total["way_waterway"]).rjust(4," ")+ ", " + str(grand_total["way_building"]).rjust(4," ")+ ", " + str(grand_total["way_man_made"]).rjust(4," ")
+		imp= " ".rjust(3," ") +"," +" ".rjust(10," ") +", " +"GRAND TOTAL".ljust(20," ") +"," + str(grand_total["changeset"]).rjust(5," ") +"," + str(grand_total["objects"]).rjust(12," ") + ", " + str(grand_total["node_c"]).rjust(5," ") + ", " + str(grand_total["way_c"]).rjust(5," ") + ", " + str(grand_total["relation_c"]).rjust(5," ") + ", " + str(grand_total["node_m"]).rjust(5," ") + ", " + str(grand_total["way_m"]).rjust(5," ") + ", " + str(grand_total["relation_m"]).rjust(5," ") + ", " + str(grand_total["node_d"]).rjust(5," ") + ", " + str(grand_total["way_d"]).rjust(5," ") + ", " + str(grand_total["relation_d"]).rjust(5," ") + ", " + str(grand_total["poi_total_nodes"]).rjust(4," ") + ", " + str(grand_total["node_amenity"]).rjust(4," ") + ", " + str(grand_total["node_shop"]).rjust(4," ") + ", " + str(grand_total["node_office"]).rjust(4," ") + ", " + str(grand_total["node_power"]).rjust(4," ") + ", " + str(grand_total["node_place"]).rjust(4," ") + ", " + str(grand_total["node_man_made"]).rjust(4," ") + ", " + str(grand_total["node_history"]).rjust(4," ") + ", " + str(grand_total["node_tourism"]).rjust(4," ")+ ", " + str(grand_total["node_leisure"]).rjust(4," ")+ ", " + str(grand_total["way_highway"]).rjust(4," ")+ ", " + str(grand_total["way_waterway"]).rjust(4," ")+ ", " + str(grand_total["way_building"]).rjust(4," ")+ ", " + str(grand_total["way_landuse"]).rjust(4," ")+ ", " + str(grand_total["way_man_made"]).rjust(4," ")
 		print imp
 		csv.write(imp+"\n")
 		csv.flush()
@@ -971,7 +1151,7 @@ class OsmContributorStats:
 		if len(stats_excluded_user)==0 :
 			print "No changesets excluded"
 			return
-		imp_col=  "ekip , uid, user, changeset, node_c, way_c, relation_c, node_m, way_m, relation_m, node_d, way_d, relation_d, poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure, way_highway, way_waterway, way_building, way_man_made"
+		imp_col=  "ekip , uid, user, changeset, objects, node_c, way_c, relation_c, node_m, way_m, relation_m, node_d, way_d, relation_d, poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure, way_highway, way_waterway, way_building, way_landuse, way_man_made"
 		print imp_col
 		csv.write("\n\n"+imp_col+"\n")
 		csv.flush()
@@ -981,21 +1161,21 @@ class OsmContributorStats:
 			#print stats_excluded_user[uid]
 			#print "\n\nDebug", uid, stats_excluded_user[uid]
 			stats_excluded_user[uid]["stat"]["changeset"]=stats_user_list[uid]["changeset_excluded"]
-			imp= stats_excluded_user[uid]["ekip"].rjust(3," ") +"," + str(uid).rjust(10," ") +", " + stats_excluded_user[uid]["user"].ljust(20," ") +"," + str(stats_excluded_user[uid]["stat"]["changeset"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_c"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["way_c"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["relation_c"]).rjust(5," ")+ ", " + str(stats_excluded_user[uid]["stat"]["node_m"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["way_m"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["relation_m"]).rjust(5," ")+ ", " + str(stats_excluded_user[uid]["stat"]["node_d"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["way_d"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["relation_d"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["poi_total_nodes"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_amenity"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_shop"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_office"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_power"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_place"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_man_made"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_history"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_tourism"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["node_leisure"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_highway"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_waterway"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_building"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_man_made"]).rjust(4," ")
+			imp= stats_excluded_user[uid]["ekip"].rjust(3," ") +"," + str(uid).rjust(10," ") +", " + stats_excluded_user[uid]["user"].ljust(20," ") +"," + str(stats_excluded_user[uid]["stat"]["changeset"]).rjust(5," ") +"," + str(stats_excluded_user[uid]["stat"]["objects"]).rjust(12," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_c"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["way_c"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["relation_c"]).rjust(5," ")+ ", " + str(stats_excluded_user[uid]["stat"]["node_m"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["way_m"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["relation_m"]).rjust(5," ")+ ", " + str(stats_excluded_user[uid]["stat"]["node_d"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["way_d"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["relation_d"]).rjust(5," ") + ", " + str(stats_excluded_user[uid]["stat"]["poi_total_nodes"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_amenity"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_shop"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_office"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_power"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_place"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_man_made"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_history"]).rjust(4," ") + ", " + str(stats_excluded_user[uid]["stat"]["node_tourism"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["node_leisure"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_highway"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_waterway"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_building"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_landuse"]).rjust(4," ")+ ", " + str(stats_excluded_user[uid]["stat"]["way_man_made"]).rjust(4," ")
 			print imp
 			csv.write(imp+"\n")
 			csv.flush()
 		grand_total=self.stats_init()
 		#print "\n", grand_total
 		nbuser=0
-		for obs in stats_excluded_user:
+		for changeset_id in stats_excluded_user:
 			nbuser+=1
-			#print stats[obs]
-			#print nbuser,stats[obs]["ekip"],stats[obs]["uid"],stats[obs]["user"],stats[obs]["stat"]["changeset"]
-			for key,value in stats_excluded_user[obs]["stat"].items():
+			#print stats[changeset_id]
+			#print nbuser,stats[changeset_id]["ekip"],stats[changeset_id]["uid"],stats[changeset_id]["user"],stats[changeset_id]["stat"]["changeset"]
+			for key,value in stats_excluded_user[changeset_id]["stat"].items():
 				grand_total[key]+=value
 		#print "\nGrand Total\n",grand_total
-		imp= " ".rjust(3," ") +"," +" ".rjust(10," ") +", " +"GRAND TOTAL".ljust(20," ") +"," + str(grand_total["changeset"]).rjust(5," ") + ", " + str(grand_total["node_c"]).rjust(5," ") + ", " + str(grand_total["way_c"]).rjust(5," ") + ", " + str(grand_total["relation_c"]).rjust(5," ") + ", " + str(grand_total["node_m"]).rjust(5," ") + ", " + str(grand_total["way_m"]).rjust(5," ") + ", " + str(grand_total["relation_m"]).rjust(5," ") + ", " + str(grand_total["node_d"]).rjust(5," ") + ", " + str(grand_total["way_d"]).rjust(5," ") + ", " + str(grand_total["relation_d"]).rjust(5," ") + ", " + str(grand_total["poi_total_nodes"]).rjust(4," ") + ", " + str(grand_total["node_amenity"]).rjust(4," ") + ", " + str(grand_total["node_shop"]).rjust(4," ") + ", " + str(grand_total["node_office"]).rjust(4," ") + ", " + str(grand_total["node_power"]).rjust(4," ") + ", " + str(grand_total["node_place"]).rjust(4," ") + ", " + str(grand_total["node_man_made"]).rjust(4," ") + ", " + str(grand_total["node_history"]).rjust(4," ") + ", " + str(grand_total["node_tourism"]).rjust(4," ")+ ", " + str(grand_total["node_leisure"]).rjust(4," ")+ ", " + str(grand_total["way_highway"]).rjust(4," ")+ ", " + str(grand_total["way_waterway"]).rjust(4," ")+ ", " + str(grand_total["way_building"]).rjust(4," ")+ ", " + str(grand_total["way_man_made"]).rjust(4," ")
+		imp= " ".rjust(3," ") +"," +" ".rjust(10," ") +", " +"GRAND TOTAL".ljust(20," ") +"," + str(grand_total["changeset"]).rjust(5," ") +"," + str(grand_total["objects"]).rjust(12," ") + ", " + str(grand_total["node_c"]).rjust(5," ") + ", " + str(grand_total["way_c"]).rjust(5," ") + ", " + str(grand_total["relation_c"]).rjust(5," ") + ", " + str(grand_total["node_m"]).rjust(5," ") + ", " + str(grand_total["way_m"]).rjust(5," ") + ", " + str(grand_total["relation_m"]).rjust(5," ") + ", " + str(grand_total["node_d"]).rjust(5," ") + ", " + str(grand_total["way_d"]).rjust(5," ") + ", " + str(grand_total["relation_d"]).rjust(5," ") + ", " + str(grand_total["poi_total_nodes"]).rjust(4," ") + ", " + str(grand_total["node_amenity"]).rjust(4," ") + ", " + str(grand_total["node_shop"]).rjust(4," ") + ", " + str(grand_total["node_office"]).rjust(4," ") + ", " + str(grand_total["node_power"]).rjust(4," ") + ", " + str(grand_total["node_place"]).rjust(4," ") + ", " + str(grand_total["node_man_made"]).rjust(4," ") + ", " + str(grand_total["node_history"]).rjust(4," ") + ", " + str(grand_total["node_tourism"]).rjust(4," ")+ ", " + str(grand_total["node_leisure"]).rjust(4," ")+ ", " + str(grand_total["way_highway"]).rjust(4," ")+ ", " + str(grand_total["way_waterway"]).rjust(4," ")+ ", " + str(grand_total["way_building"]).rjust(4," ")+ ", " + str(grand_total["way_landuse"]).rjust(4," ")+ ", " + str(grand_total["way_man_made"]).rjust(4," ")
 		print imp
 		csv.write(imp+"\n")
 		csv.flush()
@@ -1016,6 +1196,7 @@ class OsmContributorStats:
 		csv.flush()
 		csv.close()
 		csv_team.close()
+		csv_changeset.close()
 		csv_dim.close()
 		return None
 
@@ -1050,32 +1231,34 @@ class OsmContributorStats:
 		time_to="T23:59:00Z"
 		nom_changeset_list=prefix+from_date+"-"+to_date+"_changeset_list.txt"
 		nom_changeset_objects=prefix+from_date+"-"+to_date+"_changeset_objects.txt"
-		prefix_team=prefix+"-team"+from_date+"-"+to_date+".csv"
-		prefix=prefix+from_date+"-"+to_date+".csv"
+		prefix_team=prefix+from_date+"-"+to_date+"-team.csv"
+		prefix_changesets=prefix+from_date+"-"+to_date+"-changeset.csv"
+		prefix_users=prefix+from_date+"-"+to_date+".csv"
 		#
 		print "=========================================="
 		fi_changesets_list = open(nom_changeset_list, 'wb')
 		fi_changesets_objects = open(nom_changeset_objects, 'wb')
-		csv = open(prefix, 'wb')
-		print "ekip, user, changeset, node_c,way_c,relation_c, node_m,way_m,relation_m, node_d,way_d,relation_d ,node_amenity,node_shop,node_office,node_power,node_place,node_man_made,node_history,node_tourism,node_leisure,way_highway,way_waterway,way_building,way_man_made"
-		csv.write("ekip, user, changeset, node_c,way_c,relation_c, node_m,way_m,relation_m, node_d,way_d,relation_d ,node_amenity,node_shop,node_office,node_power,node_place,node_man_made,node_history,node_tourism,node_leisure,way_highway,way_waterway,way_building,way_man_made \n")
+		csv = open(prefix_users, 'wb')
+		print "ekip, user, changeset, objects, node_c,way_c,relation_c, node_m,way_m,relation_m, node_d,way_d,relation_d ,node_amenity,node_shop,node_office,node_power,node_place,node_man_made,node_history,node_tourism,node_leisure,way_highway,way_waterway,way_building,way_landuse,way_man_made"
+		csv.write("ekip, user, changeset, objects, node_c,way_c,relation_c, node_m,way_m,relation_m, node_d,way_d,relation_d ,node_amenity,node_shop,node_office,node_power,node_place,node_man_made,node_history,node_tourism,node_leisure,way_highway,way_waterway,way_building,way_landuse,way_man_made \n")
 		csv.flush()
 		#prefix_team=prefix+'_team'
+		csv_changeset = open(prefix_changesets, 'wb')
 		csv_team = open(prefix_team, 'wb')
-		csv_team.write("ekip, user, changeset, node_c,way_c,relation_c, node_m,way_m,relation_m, node_d,way_d,relation_d ,node_amenity,node_shop,node_office,node_power,node_place,node_man_made,node_history,node_tourism,node_leisure,way_highway,way_waterway,way_building,way_man_made \n")
+		csv_team.write("ekip, user, changeset, objects, node_c,way_c,relation_c, node_m,way_m,relation_m, node_d,way_d,relation_d ,node_amenity,node_shop,node_office,node_power,node_place,node_man_made,node_history,node_tourism,node_leisure,way_highway,way_waterway,way_building,way_landuse,way_man_made \n")
 		csv_team.flush()
 		for ekip in range(team_from,team_to+1):
-			stats_team= {"changeset":0,"node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_man_made":0}
+			stats_team= {"changeset":0, "objects":0, "node_c":0, "way_c":0, "relation_c":0,"node_m":0, "way_m":0, "relation_m":0,"node_d":0, "way_d":0, "relation_d":0, "node_amenity":0, "node_shop":0, "node_craft":0, "node_office":0, "node_power":0, "node_place":0, "node_man_made":0, "node_history":0, "node_tourism":0, "node_leisure":0, "way_highway":0, "way_waterway":0, "way_building":0, "way_landuse":0, "way_man_made":0}
 			print "\n ekip " + str(ekip)
 			for user in users[ekip]:
 				self.summary_statistics(user,min_lon, min_lat, max_lon,
-					  max_lat,from_date,to_date,csv,csv_team,ekip,stats_team)
+					  max_lat,from_date,to_date,csv,csv_team,csv_changeset,ekip,stats_team)
 				# end of team - print in summary file by team
-			#print str(ekip) +", " +str(user) +", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"]) + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"]) + ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_man_made"])
-			#csv.write(str(ekip) +", " +str(user) +", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"]) + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_man_made"])  + "\n")
-			#csv.write(str(ekip) +", " +str(user) +", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"])   + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"]) + ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_man_made"])  + "\n")
-			print str(ekip) +", " +str(from_date[1:10])+" - " + str(to_date[1:10])+", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"])	+ ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"])	+ ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_man_made"])
-			csv_team.write(str(ekip) +", " + str(from_date[1:10])+" - " + str(to_date[1:10])+", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"])  + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"])	+ ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_man_made"])  + "\n")
+			#print str(ekip) +", " +str(user) +", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"]) + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"]) + ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_landuse"])+ ", " + str(stats_team["way_man_made"])
+			#csv.write(str(ekip) +", " +str(user) +", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"]) + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_landuse"])+ ", " + str(stats_team["way_man_made"])  + "\n")
+			#csv.write(str(ekip) +", " +str(user) +", " + str(stats_team["changeset"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"])   + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"]) + ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_landuse"])+ ", " + str(stats_team["way_man_made"])  + "\n")
+			print str(ekip) +", " +str(from_date[1:10])+" - " + str(to_date[1:10])+", " + str(stats_team["changeset"])+", " + str(stats_team["objects"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"])	+ ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"])	+ ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_landuse"])+ ", " + str(stats_team["way_man_made"])
+			csv_team.write(str(ekip) +", " + str(from_date[1:10])+" - " + str(to_date[1:10])+", " + str(stats_team["changeset"])+", " + str(stats_team["objects"]) + ", " + str(stats_team["node_c"]) + ", " + str(stats_team["way_c"]) + ", " + str(stats_team["relation_c"])+ ", " + str(stats_team["node_m"]) + ", " + str(stats_team["way_m"]) + ", " + str(stats_team["relation_m"])+ ", " + str(stats_team["node_d"]) + ", " + str(stats_team["way_d"]) + ", " + str(stats_team["relation_d"])  + ", " + str(stats_team["node_amenity"]) + ", " + str(stats_team["node_shop"]) + ", " + str(stats_team["node_office"]) + ", " + str(stats_team["node_power"]) + ", " + str(stats_team["node_place"])	+ ", " + str(stats_team["node_man_made"]) + ", " + str(stats_team["node_history"]) + ", " + str(stats_team["node_tourism"])+ ", " + str(stats_team["node_leisure"])+ ", " + str(stats_team["way_highway"])+ ", " + str(stats_team["way_waterway"])+ ", " + str(stats_team["way_building"])+ ", " + str(stats_team["way_landuse"])+ ", " + str(stats_team["way_man_made"])  + "\n")
 			csv_team.flush()
 		fi_changesets_list.close()
 		fi_changesets_objects.close()
