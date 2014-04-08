@@ -27,7 +27,7 @@ Statistics for each contributor and teams are compiled and saved in csv files.
 | objects modified | node_m, way_m, relation_m |
 | objects deleted | node_d, way_d, relation_d |
 | POI nodes | poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure |
-| ways| way_highway, way_waterway, way_building, way_man_made |
+| ways| way_highway, way_waterway, way_building, way_landuse, way_man_made |
 
 
 
