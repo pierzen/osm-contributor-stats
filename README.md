@@ -7,9 +7,12 @@ Version 02.1 August 18 2014
 The ***Script-to-Extract-Objects-and-Calculate-Statistics-from-OsmContributorStats-Module.py*** Python script is an example of instructions to extract objects and calculate statistics using the OsmContributorStats Class Module.
 
 CSV Output files show the statistics
-[Prefix] of files contains the prefix provided by the user + the date range ex. ebola-2014-08-18-2014-08-18 )
+[Prefix] of files contains the prefix provided by the user + the date range ex. lome-2014-08-01-2014-08-18 )
+
 1. Users statistics : [prefix].csv
+
 2. Teams statistics : [prefix]-team.csv
+
 3. Changesets statistics : [prefix]-changeset.csv
 
 File format 1 and two are obsolete and might be deleted in other versions of the script.
