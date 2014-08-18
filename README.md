@@ -13,10 +13,11 @@ CSV Output files show the statistics
 
 2. Teams statistics : [prefix]-team.csv
 
-3. Changesets statistics : [prefix]-changeset.csv
+3. Changesets statistics : [prefix]-changeset.csv<br/>
+   - flag=1 Changesets flagged for elimination (edit bounds largely outside the bbox defined for this analysis)
 
 File format 1 and two are obsolete and might be deleted in other versions of the script.
-File format 3 (by CSV) can be analysed in a spreadsheet and produce statistics with the various variables such as day, user, team. Statistics by date show the progression of an activity. Statistics by user let's see how many contributors up to date.
+File format 3 (by CSV) can be analysed in a spreadsheet and produce statistics with the various variables such as day, user, team. Statistics by date show the progression of an activity. Statistics by user let's see how many contributors up to date. In general, we filter and eliminate changesets with flag=1 since these changesets often correspond to mechanical edits covering continents.
 
 ## Instructions
 
