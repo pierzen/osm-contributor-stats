@@ -1,6 +1,6 @@
 # Osm Contributor Statistics
 
-Version 02.1 August 18 2014
+Version 0.2.1 August 18 2014
 
 ## How to use this Python class to produce contributor statistics
 
