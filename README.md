@@ -9,11 +9,11 @@ The ***Script-to-Extract-Objects-and-Calculate-Statistics-from-OsmContributorSta
 CSV Output files show the statistics
 [Prefix] of files contains the prefix provided by the user + the date range ex. oef-togo-2013-06-26--2013-06-27 )
 
-1. Users statistics : [prefix].csv
+1. Users statistics : [prefix].csv  ( ex. oef-togo-2013-06-26--2013-06-27.csv )
 
-2. Teams statistics : [prefix]-team.csv
+2. Teams statistics : [prefix]-team.csv   ( ex. oef-togo-2013-06-26--2013-06-27-team.csv )
 
-3. Changesets statistics : [prefix]-changeset.csv<br/>
+3. Changesets statistics : [prefix]-changeset.csv  ( ex. oef-togo-2013-06-26--2013-06-27-changeset.csv )<br/>
    - flag=1 Changesets flagged for elimination (edit bounds largely outside the bbox defined for this analysis)
 
 File format 1 and two are obsolete and might be deleted in other versions of the script.
