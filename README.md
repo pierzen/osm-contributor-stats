@@ -1,9 +1,19 @@
 # Osm Contributor Statistics
 
+Version 02.1 August 18 2014
 
 ## How to use this Python class to produce contributor statistics
 
 The ***Script-to-Extract-Objects-and-Calculate-Statistics-from-OsmContributorStats-Module.py*** Python script is an example of instructions to extract objects and calculate statistics using the OsmContributorStats Class Module.
+
+CSV Output files show the statistics
+[Prefix] of files contains the prefix provided by the user + the date range ex. ebola-2014-08-18-2014-08-18 )
+1. Users statistics : [prefix].csv
+2. Teams statistics : [prefix]-team.csv
+3. Changesets statistics : [prefix]-changeset.csv
+
+File format 1 and two are obsolete and might be deleted in other versions of the script.
+File format 3 (by CSV) can be analysed in a spreadsheet and produce statistics with the various variables such as day, user, team. Statistics by date show the progression of an activity. Statistics by user let's see how many contributors up to date.
 
 ## Instructions
 
@@ -23,9 +33,9 @@ Statistics for each contributor and teams are compiled and saved in csv files.
 | Statistic type | variable names |
 | ------------------------- | ---------------------------------------- |
 | number of changesets | changeset |
-| objects created | node_c, way_c, relation_c |
-| objects modified | node_m, way_m, relation_m |
-| objects deleted | node_d, way_d, relation_d |
+| objects created | object_c, node_c, way_c, relation_c |
+| objects modified | object_m, node_m, way_m, relation_m |
+| objects deleted | object_d, node_d, way_d, relation_d |
 | POI nodes | poi_total_nodes, node_amenity, node_shop, node_office, node_power, node_place, node_man_made, node_history, node_tourism, node_leisure |
 | ways| way_highway, way_waterway, way_building, way_landuse, way_man_made |
 
