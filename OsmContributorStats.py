@@ -486,11 +486,7 @@ class OsmContributorStats:
 				if iter>=max_iter :
 					print "\n Daily procedure interrupted, maximum iteration is ", max_iter, "\n"
 					break
-				if len(time_segments)==0 :
-					fini=1
-					if(self._debug): print ">> TOTAL nb changesets=",len(changesets)
-					break
-				if (len(s_changesets)==100) :
+				if (len(s_changesets)>99) :
 					# divide time segment in two portions
 					half_time=time_segment[1]/2
 					minute_1=time_segment[0]
@@ -503,6 +499,10 @@ class OsmContributorStats:
 					time_segment_2=[minute_2,half_time]
 					time_segments.append(time_segment_2)
 					if(self._debug): print ">> iter ", iter, " + n_time_segment 2 ", time_segment_2, "\n", time_segments
+				if len(time_segments)==0 :
+					fini=1
+					if(self._debug): print ">> TOTAL nb changesets=",len(changesets)
+					break
 		return changesets
 
 	def getChangesetHist(self, cid,ekip,fi_changesets_objects):
