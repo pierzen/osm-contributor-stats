@@ -5,12 +5,12 @@
 '''
 #========================================================================="
 # OsmContributorStats.py
-# Version 0.2.1
+# Version 0.3.1
 # Pierre Beland, 08-2014
 # See https://github.com/pierzen/osm-contributor-stats/README.md
 #========================================================================="
 
-#__version__ = '0.2.1'
+#__version__ = '0.3.1'
 
 import ast, csv, os, sys, json, math
 from pprint import pprint
