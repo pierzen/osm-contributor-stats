@@ -12,7 +12,7 @@
 #========================================================================="
 """
 import os
-# specify the directory where both OsmApi.py and OsmContributorStats.py are stored
+# replace below with the directory where both OsmApi.py and OsmContributorStats.py are stored
 os.chdir('c:\OsmContributorStats\\')
 import OsmApi
 # Instantiation classe OsmApi
