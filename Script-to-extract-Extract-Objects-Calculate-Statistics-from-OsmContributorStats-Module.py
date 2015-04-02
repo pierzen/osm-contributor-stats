@@ -12,12 +12,14 @@
 #========================================================================="
 """
 import os
+# specify the directory where both OsmApi.py and OsmContributorStats.py are stored
 os.chdir('c:\OsmContributorStats\\')
 import OsmApi
+# Instantiation classe OsmApi
 osmApi = OsmApi.OsmApi(debug=False)
 import OsmContributorStats
 # Instantiation classe OsmContributorStats
-ContributorStats = OsmContributorStats.OsmContributorStats(rep='c:\OsmContributorStats\\',lang="fr",debug=False)
+ContributorStats = OsmContributorStats.OsmContributorStats(rep='c:\OsmContributorStats\\',lang="en",debug=False)
 dir(ContributorStats)
 
 #===============================================================================
