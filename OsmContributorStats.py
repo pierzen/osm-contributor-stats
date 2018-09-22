@@ -793,9 +793,13 @@ class OsmContributorStats:
 			stats_team= {"changeset":0}
 			print "\n ekip " + str(ekip)
 			for user in users[ekip]:
-				self.ekip_hist(user,min_lon, min_lat, max_lon,
-					  max_lat,from_date,to_date,fi_changesets_list,fi_changesets_objects,ekip,stats_team)
-				# end of team - print in summary file by team
+				try:
+					self.ekip_hist(user,min_lon, min_lat, max_lon,
+                        max_lat,from_date,to_date,fi_changesets_list,fi_changesets_objects,ekip,stats_team)
+                    # end of team - print in summary file by team
+				except:
+					continue
+
 			print str(ekip) +", " +str(from_date[1:10])+" - " + str(to_date[1:10])+", " + str(stats_team["changeset"])
 		fi_changesets_list.close()
 		fi_changesets_objects.close()
