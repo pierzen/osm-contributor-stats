@@ -124,7 +124,7 @@ class OsmApi:
         self._CurrentChangesetId = 0
         
         # Http connection
-        self._conn = httplib.HTTPConnection(self._api, 80)
+        self._conn = httplib.HTTPSConnection(self._api, 443)
 
     def __del__(self):
         if self._changesetauto:
@@ -634,12 +634,12 @@ class OsmApi:
                 if e.status >= 500:
                     if i == 5: raise
                     if i <> 1: time.sleep(5)
-                    self._conn = httplib.HTTPConnection(self._api, 80)
+                    self._conn = httplib.HTTPSConnection(self._api, 443)
                 else: raise
             except Exception:
                 if i == 5: raise
                 if i <> 1: time.sleep(5)
-                self._conn = httplib.HTTPConnection(self._api, 80)
+                self._conn = httplib.HTTPSConnection(self._api, 443)
     
     def _get(self, path):
         return self._http('GET', path, False, None)
