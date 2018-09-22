@@ -799,6 +799,7 @@ class OsmContributorStats:
                     # end of team - print in summary file by team
 				except:
 					continue
+
 			print str(ekip) +", " +str(from_date[1:10])+" - " + str(to_date[1:10])+", " + str(stats_team["changeset"])
 		fi_changesets_list.close()
 		fi_changesets_objects.close()
